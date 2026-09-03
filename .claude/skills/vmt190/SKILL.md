@@ -1,0 +1,225 @@
+---
+name: vmt190
+description: Concrete patterns for the Heltec Vision Master T190 (VMT190) board — an ESP32 + LoRa + 1.9" ST7789 color TFT — covering HT_ST7789 SPI display init/draw API, RGB565 bitmap drawing, and combining a GXHTC temperature/humidity sensor with LoRaWAN uplink and TFT status display. Use when writing or reviewing firmware for the Vision Master T190, VMT190, or any Heltec board with a 1.9" TFT LoRa sensor display.
+version: 1.0.0
+---
+
+# Heltec Vision Master T190 (VMT190)
+
+Reusable patterns extracted from Heltec's official VMT190 examples (`Sensor_LoRaWAN`, `tft1_9`). The VMT190 pairs an ESP32 SoC + SX126x LoRa radio with a 1.9" ST7789-driven color TFT (physical controller area 240x320, active visible area 170x320, centered).
+
+## When to use this skill
+
+Use this skill whenever the task involves the Heltec Vision Master T190 (VMT190) board specifically: driving its onboard 1.9" TFT, combining sensor readings with a LoRaWAN uplink while showing status on-screen, or drawing RGB565 icons/text on this display. For generic LoRaWAN join/uplink logic not tied to this board's display, the `lorawan` skill may also apply; for other Heltec displays (E-ink, OLED), see the `eink`/`oled` skills instead.
+
+## Board pinout (both examples use identical pin defines)
+
+```cpp
+#define st7789_CS_Pin        39
+#define st7789_REST_Pin      40
+#define st7789_DC_Pin        47
+#define st7789_SCLK_Pin      38
+#define st7789_MOSI_Pin      48
+#define st7789_LED_K_Pin     17   // backlight control
+#define st7789_VTFT_CTRL_Pin  7   // TFT power rail control (active LOW = on)
+```
+
+Note: no MISO pin is used (write-only display) — `gspi_lcd->begin(SCLK, -1, MOSI, CS)` passes `-1` for MISO.
+
+## Display power / backlight gotchas
+
+Before touching the display, the TFT power rail (`VTFT_CTRL`, GPIO7) must be driven **LOW** to enable power to the panel, and the backlight (`LED_K`, GPIO17) must be driven **HIGH** to turn it on. Both examples do this identically in `setup()`:
+
+```cpp
+pinMode(7, OUTPUT);
+digitalWrite(7, LOW);     // enable TFT power rail (Vext-style control)
+delay(20);
+
+// ... construct + init display ...
+
+pinMode(17, OUTPUT);
+digitalWrite(17, HIGH);   // turn on backlight
+```
+
+If the display stays blank, check these two pins first — this is the VMT190 equivalent of the Vext power-gating pattern seen on other Heltec boards.
+
+## TFT driver: `HT_ST7789` (from `HT_ST7789spi.h`, an `Adafruit_GFX`/`Adafruit_SPITFT` subclass)
+
+Library headers used: `LoRaWan_APP.h`, `HT_ST7789spi.h`, `Adafruit_GFX.h`, `SPI.h`.
+
+### Construction and init
+
+```cpp
+static HT_ST7789 *st7789 = NULL;
+static SPIClass   *gspi_lcd = NULL;
+
+gspi_lcd = new SPIClass(HSPI);
+st7789 = new HT_ST7789(240, 320, gspi_lcd, st7789_CS_Pin, st7789_DC_Pin, st7789_REST_Pin);
+gspi_lcd->begin(st7789_SCLK_Pin, -1, st7789_MOSI_Pin, st7789_CS_Pin);
+pinMode(gspi_lcd->pinSS(), OUTPUT);
+st7789->init(170, 320);          // logical width x height passed to init(), NOT the ctor's 240x320
+st7789->setRotation(1);
+st7789->fillScreen(ST7789_BLACK);
+```
+
+Gotcha: the constructor is always called with the controller's physical frame size `(240, 320)`, but `init()` is called with the panel's **active/visible** size `(170, 320)` for the 1.9" panel. The driver auto-centers a 170-wide (or 240-wide, 135-tall, etc.) active area within the 240x320 controller RAM (`_colstart`/`_rowstart` offsets in `HT_st7789spi.cpp`) — pass the wrong active size and the image will be shifted or clipped.
+
+`setRotation(1)` is used in both examples to get landscape orientation matching a 320x170-ish usable canvas for text/graphics after rotation.
+
+### Color constants
+
+`ST7789_BLACK/WHITE/RED/GREEN/BLUE/CYAN/MAGENTA/YELLOW/ORANGE` are defined in `HT_ST7789spi.h`, but their RGB565 bit patterns are **swapped** depending on a board macro:
+
+```cpp
+#ifdef  WIFI_LORA_32_V4
+#define ST7789_RED 0x001F   // R/B channels swapped for this board variant
+#define ST7789_BLUE 0xF800
+...
+#else
+#define ST7789_RED 0xF800   // standard RGB565 red
+#define ST7789_BLUE 0x001F
+...
+#endif
+```
+
+Both VMT190 examples also use raw hex literals directly for cyan-ish text (`0x07FF`) rather than the `ST7789_CYAN` constant — worth being aware that raw 565 literals appear inline in this codebase alongside the named constants.
+
+### Text drawing helper (both examples define the same helper)
+
+```cpp
+void testdrawtext(uint16_t x, uint16_t y, char *text, uint16_t color) {
+  st7789->setCursor(x, y);
+  st7789->setTextColor(color);
+  st7789->setTextWrap(true);
+  st7789->print(text);
+}
+```
+
+`setTextSize(n)` is used to scale the default GFX font (sizes 1, 2, 3, 5 all appear, e.g. `st7789->setTextSize(5)` for a big clock hour digit).
+
+### Bitmap drawing (RGB565 PROGMEM arrays)
+
+Icons/sprites are plain `const uint16_t foo[] PROGMEM = {...}` RGB565 pixel arrays (row-major, no header/metadata — width/height are passed separately at the call site and must match the array's known dimensions), generated by an image-to-array tool and stored in headers like `pic.h` / `img.h` / `img_data.h`:
+
+```cpp
+#include <pgmspace.h>
+const uint16_t p0_5151[0xA20] PROGMEM = { 0x0000, 0x0000, 0xFEE3, ... };
+// naming convention: p<weather-code>_<width><height>[<hex array size>]
+```
+
+Drawn with `Adafruit_GFX`'s `drawRGBBitmap`:
+
+```cpp
+st7789->drawRGBBitmap(20, 30, p0_5151, 51, 51);      // weather icon, 51x51
+st7789->drawRGBBitmap(0, 100, temp_0, 32, 32);       // small temperature icon
+st7789->drawRGBBitmap(150, 121, img_4_0, 122, 50);   // animation frame, 122x50
+```
+
+The `tft1_9` example animates a sequence of same-sized bitmaps (`img_3_0` ... `img_19_0`, all 122x50) back-to-back in a tight loop inside a dedicated FreeRTOS task to produce a crude flipbook animation (no delay between frames — runs as fast as SPI allows).
+
+### Other primitives used
+
+```cpp
+st7789->fillRect(x, y, w, h, color);        // used to blank a region before redrawing text (avoids ghosting/flicker)
+st7789->drawFastHLine(x, y, length, color);
+st7789->drawFastVLine(x, y, length, color);
+st7789->fillScreen(color);
+```
+
+Pattern: before redrawing a numeric value (e.g. temperature) on top of old text, both examples `fillRect` the old text's bounding box with black first — the driver/GFX lib does not do dirty-rect diffing for you:
+
+```cpp
+st7789->fillRect(70, 73, 100, 30, ST7789_BLACK);
+testdrawtext(70, 73, buffer, ST7789_RED);
+```
+
+## Sensor: GXHTC (GXHTV3 temperature/humidity, I2C)
+
+```cpp
+#include "Wire.h"
+#include "GXHTC.h"
+GXHTC gxhtc;
+
+gxhtc.begin(2, 1);        // I2C pins (SDA=2, SCL=1) — connects to the board's SH2.0-4P sensor connector
+gxhtc.read_data();
+gxhtc.g_temperature;      // float, degrees C
+gxhtc.g_humidity;         // float, % RH
+```
+
+`sprintf(buffer, "%.2f", gxhtc.g_temperature)` is the pattern used to format both values as 2-decimal strings for on-screen display via `testdrawtext`.
+
+Gotcha: `Sensor_LoRaWAN.ino` calls `Wire.end()` immediately after building the LoRaWAN payload, before entering LoRaWAN state machine — release the I2C bus before radio activity in that codebase's convention.
+
+## `Sensor_LoRaWAN.ino`: combining sensor + TFT + LoRaWAN uplink
+
+This is the canonical pattern for "read sensor → show on TFT → send over LoRaWAN":
+
+1. `setup()` powers/inits the TFT exactly as above, then calls `Mcu.begin(HELTEC_BOARD, SLOW_CLK_TPYE)` (Heltec LoRaWAN stack init — from `LoRaWan_APP.h`).
+2. `loop()` runs the standard Heltec `deviceState` state machine (`DEVICE_STATE_INIT` → `JOIN` → `SEND` → `CYCLE` → `SLEEP`), identical to non-display LoRaWAN examples.
+3. `prepareTxFrame(uint8_t port)` is where sensor read + TFT update + payload packing all happen together:
+
+```cpp
+static void prepareTxFrame(uint8_t port) {
+  gxhtc.begin(2, 1);
+  gxhtc.read_data();
+
+  // --- TFT update ---
+  st7789->drawRGBBitmap(0, 50, temp_72_0, 72, 72);
+  sprintf(buffer, "%.2f", gxhtc.g_temperature);
+  st7789->setTextSize(3);
+  st7789->fillRect(70, 73, 100, 30, ST7789_BLACK);   // clear old value first
+  testdrawtext(70, 73, (char *)buffer, ST7789_RED);
+
+  st7789->drawRGBBitmap(160, 50, Humidity_72_0, 72, 72);
+  sprintf(buffer, "%.2f", gxhtc.g_humidity);
+  st7789->fillRect(220, 73, 100, 30, ST7789_BLACK);
+  testdrawtext(220, 73, (char *)buffer, ST7789_BLUE);
+
+  // --- LoRaWAN payload packing: raw float bytes, little pattern of markers ---
+  appDataSize = 0;
+  appData[appDataSize++] = 0x04;
+  appData[appDataSize++] = 0x00;
+  appData[appDataSize++] = 0x0A;
+  appData[appDataSize++] = 0x02;
+  unsigned char *puc = (unsigned char *)(&gxhtc.g_temperature);
+  appData[appDataSize++] = puc[0];
+  appData[appDataSize++] = puc[1];
+  appData[appDataSize++] = puc[2];
+  appData[appDataSize++] = puc[3];
+  appData[appDataSize++] = 0x12;
+  puc = (unsigned char *)(&gxhtc.g_humidity);
+  appData[appDataSize++] = puc[0];
+  appData[appDataSize++] = puc[1];
+  appData[appDataSize++] = puc[2];
+  appData[appDataSize++] = puc[3];
+
+  Wire.end();
+}
+```
+
+Note the payload is packed as raw little-endian `float` bytes (4 bytes each for temperature and humidity) with single-byte type markers (`0x0A`/`0x02` header, `0x12` separator) — this is a simple/ad-hoc framing, not CayenneLPP. A LoRaWAN-server-side decoder must know this exact byte layout to unpack it. (The example also has dead code immediately after that overwrites `appData[0..3]` with `0x00 0x01 0x02 0x03`, effectively clobbering the first 4 payload bytes it just built — worth flagging/fixing if reusing this verbatim.)
+
+The `Sensor_LoRaWAN.ino` example uses default OTAA/ABP key placeholders (`devEui`, `appEui`, `appKey`, `nwkSKey`, `appSKey`) and `overTheAirActivation = 0` (ABP by default) — always replace these with real provisioned keys, never reuse the example's zeroed/placeholder keys in production.
+
+## `tft1_9.ino`: TFT-only demo with WiFi + weather + NTP clock (no LoRaWAN)
+
+This example shows the display driven from two FreeRTOS tasks:
+
+```cpp
+xTaskCreate(tasktwo, "Tasktwo", 5000, NULL, 2, NULL);   // higher priority: net time + weather, once/min
+delay(1000);
+xTaskCreate(taskOne, "TaskOne", 5000, NULL, 1, NULL);    // lower priority: tight bitmap animation loop
+```
+
+- `taskOne` continuously redraws a sequence of 122x50 RGB565 animation frames (`img_4_0` ... `img_19_0`) with `drawRGBBitmap`, no `delay()` between frames.
+- `tasktwo` connects to WiFi (`WiFi.begin(ssid, password)`), calls `configTime()` + `getLocalTime()` for an NTP clock rendered in big text (`setTextSize(5)`), and does an HTTP GET (`WiFiClient` + manual header skip via `client.find("\r\n\r\n")`, then `ArduinoJson` `deserializeJson`) against a weather API, mapping a numeric weather code to one of ~35 pre-rendered weather icon bitmaps from `pic.h` via a big `switch` in `select(uint8_t code)`. It loops with `delay(1000 * 60)` (once per minute).
+- Both tasks share the same `st7789` display object without any mutex/lock around SPI transactions — since `taskOne` writes to a disjoint screen region (150,121 area) from `tasktwo` (icons/text elsewhere), this happens to work, but is not a general-purpose thread-safety pattern to imitate if regions overlap.
+
+`loop()` in this example is a no-op (`delay(1000)`) — all real work is in the two tasks.
+
+## Bitmap asset format summary
+
+- All icons/animation frames are plain C arrays: `const uint16_t name[] PROGMEM = { ... };` (or with an explicit hex size like `p0_5151[0xA20]`), one `uint16_t` per pixel in RGB565, row-major.
+- Files: `pic.h` (weather icons, ~35 codes, sized from 23px to 60px), `img.h` / `img_data.h` (small status icons + larger animation frame sequences).
+- `#include <pgmspace.h>` is required in files declaring `PROGMEM` arrays.
+- Width/height are not embedded in the array — they must be tracked separately (either in the variable name, as in `p14_5654` = weather code 14, 56x54px, or via a comment) and passed explicitly to `drawRGBBitmap(x, y, arr, w, h)`.
