@@ -11,6 +11,7 @@
 		047676943C4E28B72661B30F /* ScanListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE53717BE6D311C4926EF42E /* ScanListView.swift */; };
 		126A91CC21561530E27C1EA3 /* ESP32ChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 846373B834C27AC9219F279F /* ESP32ChatApp.swift */; };
 		44038813A4CDF6AC64D71169 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F48EDB0179B009F22BFBBFC /* SettingsView.swift */; };
+		A358AF675017301442AE9B7F /* DebugLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84C73D0B0FB5484E2669A240 /* DebugLogView.swift */; };
 		F1D90CD03F74DB29B2C525D0 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CC11270C98EE1B59770612 /* ChatView.swift */; };
 		F762B59C69FC6CDBD504DC01 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 203DA621B28C4C6215904CD9 /* ContentView.swift */; };
 /* End PBXBuildFile section */
@@ -19,6 +20,7 @@
 		203DA621B28C4C6215904CD9 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		6F48EDB0179B009F22BFBBFC /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		846373B834C27AC9219F279F /* ESP32ChatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ESP32ChatApp.swift; sourceTree = "<group>"; };
+		84C73D0B0FB5484E2669A240 /* DebugLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogView.swift; sourceTree = "<group>"; };
 		AE53717BE6D311C4926EF42E /* ScanListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanListView.swift; sourceTree = "<group>"; };
 		CA2CF1053643127AD9B78A8E /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
 		E0EDE8081CEC6D64E9289332 /* ESP32Chat.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ESP32Chat.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -48,6 +50,7 @@
 				CA2CF1053643127AD9B78A8E /* BLEManager.swift */,
 				E3CC11270C98EE1B59770612 /* ChatView.swift */,
 				203DA621B28C4C6215904CD9 /* ContentView.swift */,
+				84C73D0B0FB5484E2669A240 /* DebugLogView.swift */,
 				846373B834C27AC9219F279F /* ESP32ChatApp.swift */,
 				AE53717BE6D311C4926EF42E /* ScanListView.swift */,
 				6F48EDB0179B009F22BFBBFC /* SettingsView.swift */,
@@ -116,6 +119,7 @@
 				01E0ED614CF7415DB0DA0062 /* BLEManager.swift in Sources */,
 				F1D90CD03F74DB29B2C525D0 /* ChatView.swift in Sources */,
 				F762B59C69FC6CDBD504DC01 /* ContentView.swift in Sources */,
+				A358AF675017301442AE9B7F /* DebugLogView.swift in Sources */,
 				126A91CC21561530E27C1EA3 /* ESP32ChatApp.swift in Sources */,
 				047676943C4E28B72661B30F /* ScanListView.swift in Sources */,
 				44038813A4CDF6AC64D71169 /* SettingsView.swift in Sources */,

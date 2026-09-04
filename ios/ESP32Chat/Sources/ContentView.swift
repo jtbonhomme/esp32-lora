@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var ble: BLEManager
     @State private var showingSettings = false
+    @State private var showingDebugLog = false
 
     var body: some View {
         NavigationStack {
@@ -16,6 +17,14 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        showingDebugLog = true
+                    } label: {
+                        Image(systemName: "ladybug")
+                    }
+                    .accessibilityLabel("Debug Log")
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
                         showingSettings = true
                     } label: {
                         Image(systemName: "gearshape")
@@ -25,6 +34,9 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
+            }
+            .sheet(isPresented: $showingDebugLog) {
+                DebugLogView()
             }
         }
     }
