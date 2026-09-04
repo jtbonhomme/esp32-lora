@@ -5,3 +5,4 @@ build
 ios/**/xcuserdata/
 ios/**/*.xcuserstate
 ios/**/DerivedData/
+Makefile.local

@@ -18,17 +18,34 @@ device's name.
 
 ## Build & run
 
+All targets below are driven from the root `Makefile` (run from the repo
+root, not from this directory) — run `make help` there for the full list
+alongside the firmware targets.
+
 ```sh
-open ESP32Chat.xcodeproj
+make ios-open           # open the project in Xcode
+make ios-build          # compile for the simulator (IOS_SIMULATOR=iPhone 17)
+make ios-run            # build, install and launch on the simulator (UI only — no BLE)
 ```
 
-Select your iPhone as the run destination, set your Apple Development Team
-under the target's Signing & Capabilities tab, and run.
+BLE requires a physical iPhone (see the requirement above), which needs
+your Apple Developer Team ID and the device's UDID. Both are kept out of
+the repo in a gitignored `Makefile.local` at the repo root:
+
+```sh
+cp Makefile.local.example Makefile.local   # then fill in DEVELOPMENT_TEAM
+make ios-list-devices                      # find your iPhone's UDID, add it too
+make ios-deploy-device                     # build for device + install over USB
+```
+
+Other targets: `ios-test`, `ios-archive` / `ios-export-appstore` (signed
+`.xcarchive` / App Store Connect `.ipa`, also require `DEVELOPMENT_TEAM`),
+`ios-clean`.
 
 To regenerate the project after changing `project.yml`:
 
 ```sh
-xcodegen generate
+make ios-regen
 ```
 
 ## Matching the firmware's BLE name
