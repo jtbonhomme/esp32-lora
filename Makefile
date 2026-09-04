@@ -21,7 +21,8 @@ PORT ?= $(shell arduino-cli board list 2>/dev/null | awk '/usbmodem|usbserial|tt
 # sketch pulls in something else.
 LIBS := \
 	"Heltec ESP32 Dev-Boards" \
-	"U8g2"
+	"U8g2" \
+	"RadioLib"
 
 BOARD_MANAGER_URL := https://resource.heltec.cn/download/package_heltec_esp32_index.json
 
