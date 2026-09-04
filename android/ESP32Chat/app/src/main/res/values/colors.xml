@@ -1,0 +1,4 @@
+<resources>
+    <!-- Matches ios/ESP32Chat's LaunchBackground colorset, for brand parity. -->
+    <color name="launch_background">#283548</color>
+</resources>

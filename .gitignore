@@ -6,3 +6,12 @@ ios/**/xcuserdata/
 ios/**/*.xcuserstate
 ios/**/DerivedData/
 Makefile.local
+
+# Android: local.properties holds a machine-specific SDK path; the rest are
+# build outputs/caches (gradlew itself is committed).
+android/**/local.properties
+android/**/.gradle/
+android/**/build/
+android/**/.cxx/
+android/**/*.keystore
+android/**/*.jks

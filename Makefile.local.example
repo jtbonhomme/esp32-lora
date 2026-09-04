@@ -1,8 +1,9 @@
 # Copy this file to Makefile.local (gitignored) and fill in your own
-# Apple Developer Team ID and target iPhone UDID. Used by the ios-build-device,
-# ios-deploy-device, ios-archive and ios-export-appstore Makefile targets.
+# signing details. Used by the ios-* and android-* Makefile targets.
 #
 #   cp Makefile.local.example Makefile.local
+#
+# --- iOS (ios-build-device, ios-deploy-device, ios-archive, ios-export-appstore) ---
 #
 # DEVELOPMENT_TEAM: found at https://developer.apple.com/account under
 #   Membership, or in Xcode > Settings > Accounts > (your team) > Team ID.
@@ -10,3 +11,17 @@
 
 DEVELOPMENT_TEAM :=
 IOS_DEVICE_UDID  :=
+
+# --- Android (android-bundle: signed release .aab for Play Store upload) ---
+#
+# ANDROID_KEYSTORE: absolute path to your .jks/.keystore file (create one
+#   with `keytool -genkeypair -v -keystore release.keystore -alias upload
+#   -keyalg RSA -keysize 2048 -validity 10000`). Keep the keystore file
+#   itself out of the repo (already gitignored under android/**/*.keystore
+#   and *.jks) and back it up somewhere safe — losing it means you can never
+#   update the app under the same Play Store listing again.
+
+ANDROID_KEYSTORE          :=
+ANDROID_KEYSTORE_PASSWORD :=
+ANDROID_KEY_ALIAS         :=
+ANDROID_KEY_PASSWORD      :=

@@ -71,6 +71,26 @@ ifeq ($(strip $(IOS_MARKETING_VERSION)),)
 IOS_MARKETING_VERSION := 1.0.0
 endif
 
+# --- Android app (android/ESP32Chat) ---------------------------------------
+
+ANDROID_DIR    := android/ESP32Chat
+ANDROID_APP_ID := com.jtbonhomme.esp32chat
+
+# Prefer an SDK at the conventional Android Studio location; fall back to the
+# Homebrew cask location (`brew install --cask android-commandlinetools`)
+# used on this machine. Override with `make android-build ANDROID_HOME=...`.
+ANDROID_HOME ?= $(firstword $(wildcard $(HOME)/Library/Android/sdk) $(wildcard /opt/homebrew/share/android-commandlinetools))
+export ANDROID_HOME
+ADB := $(ANDROID_HOME)/platform-tools/adb
+
+# AGP/Gradle need JDK 17+; the system `java` may resolve to an older JDK
+# (e.g. via a separate openjdk@11 formula), so prefer a known-good JDK 21
+# install over letting Gradle pick whatever's on PATH.
+ANDROID_JAVA_HOME ?= $(firstword $(wildcard /opt/homebrew/opt/openjdk@21))
+ifneq ($(strip $(ANDROID_JAVA_HOME)),)
+export JAVA_HOME := $(ANDROID_JAVA_HOME)
+endif
+
 # --- Help ---------------------------------------------------------------
 
 .PHONY: help
@@ -103,6 +123,16 @@ help:
 	@echo "  ios-open            Open the project in Xcode"
 	@echo "  ios-clean           Remove iOS build artifacts"
 	@echo "  (DEVELOPMENT_TEAM / IOS_DEVICE_UDID come from Makefile.local, see Makefile.local.example)"
+	@echo ""
+	@echo "Android app ($(ANDROID_DIR)):"
+	@echo "  android-build         Assemble a debug APK"
+	@echo "  android-test          Run JVM unit tests"
+	@echo "  android-list-devices  List connected Android devices/emulators (adb)"
+	@echo "  android-install       android-build + install the debug APK on a connected device"
+	@echo "  android-run           android-install + launch the app"
+	@echo "  android-bundle        Build a signed release .aab (ANDROID_KEYSTORE* required)"
+	@echo "  android-clean         Remove Android build artifacts"
+	@echo "  (ANDROID_KEYSTORE* come from Makefile.local, see Makefile.local.example)"
 
 # --- Discovery ------------------------------------------------------------
 
@@ -274,3 +304,49 @@ ios-open:
 ios-clean:
 	xcodebuild -project $(IOS_PROJECT) -scheme $(IOS_SCHEME) clean
 	rm -rf $(IOS_BUILD_DIR)
+
+# --- Android app (android/ESP32Chat) ----------------------------------------
+
+.PHONY: android-build android-test android-list-devices android-install \
+        android-run android-bundle android-clean
+
+android-build:
+	cd $(ANDROID_DIR) && ./gradlew assembleDebug
+
+android-test:
+	cd $(ANDROID_DIR) && ./gradlew testDebugUnitTest
+
+android-list-devices:
+	$(ADB) devices -l
+
+# BLE doesn't work in an emulator any more than in the iOS Simulator, so
+# this installs on a real device connected over USB with debugging enabled.
+android-install: android-build
+	@if ! $(ADB) get-state >/dev/null 2>&1; then \
+		echo "No Android device/emulator connected. Plug in a device with USB debugging enabled, then check 'make android-list-devices'."; \
+		exit 1; \
+	fi
+	$(ADB) install -r $(ANDROID_DIR)/app/build/outputs/apk/debug/app-debug.apk
+
+android-run: android-install
+	$(ADB) shell am start -n $(ANDROID_APP_ID)/.MainActivity
+
+# Signed release .aab for Play Store upload. The keystore is supplied via
+# env vars (see Makefile.local.example) that app/build.gradle.kts reads
+# directly — never hardcoded into the repo.
+android-bundle:
+	@if [ -z "$(ANDROID_KEYSTORE)" ] || [ -z "$(ANDROID_KEYSTORE_PASSWORD)" ] || \
+	   [ -z "$(ANDROID_KEY_ALIAS)" ] || [ -z "$(ANDROID_KEY_PASSWORD)" ]; then \
+		echo "ANDROID_KEYSTORE / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD required (see Makefile.local.example)"; \
+		exit 1; \
+	fi
+	cd $(ANDROID_DIR) && \
+		ANDROID_KEYSTORE="$(ANDROID_KEYSTORE)" \
+		ANDROID_KEYSTORE_PASSWORD="$(ANDROID_KEYSTORE_PASSWORD)" \
+		ANDROID_KEY_ALIAS="$(ANDROID_KEY_ALIAS)" \
+		ANDROID_KEY_PASSWORD="$(ANDROID_KEY_PASSWORD)" \
+		./gradlew bundleRelease
+	@echo "Release AAB: $(ANDROID_DIR)/app/build/outputs/bundle/release/app-release.aab"
+
+android-clean:
+	cd $(ANDROID_DIR) && ./gradlew clean

@@ -1,0 +1,13 @@
+<resources>
+    <!-- Shown by androidx.core.splashscreen while MainActivity cold-starts,
+         mirroring ios/ESP32Chat's UILaunchScreen (same logo mark + background
+         color). postSplashScreenTheme takes over once installSplashScreen()
+         hands off in MainActivity.onCreate(). -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/launch_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.ESP32Chat</item>
+    </style>
+
+    <style name="Theme.ESP32Chat" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
