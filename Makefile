@@ -16,6 +16,12 @@ BUILD_DIR ?= build/$(BOARD)
 # `make upload PORT=/dev/tty.XXXX` if multiple boards are connected.
 PORT ?= $(shell arduino-cli board list 2>/dev/null | awk '/usbmodem|usbserial|ttyUSB|ttyACM/{print $$1; exit}')
 
+# esptool for `make erase`. Most machines don't have the `esptool` Python
+# package installed globally (`python3 -m esptool` then fails with "No
+# module named esptool"), so fall back to the binary arduino-cli already
+# installed alongside the ESP32 board core(s).
+ESPTOOL ?= $(shell command -v esptool 2>/dev/null || find $(HOME)/Library/Arduino15/packages -type f -name esptool -path '*/esptool_py/*' 2>/dev/null | sort -V | tail -1)
+
 # Libraries the sketches in this repo depend on (arduino-cli lib install
 # names, quoted because they contain spaces). Edit this list if a new
 # sketch pulls in something else.
@@ -164,7 +170,12 @@ erase:
 		echo "No serial port detected/set. Plug in the board or pass PORT=/dev/tty.XXXX"; \
 		exit 1; \
 	fi
-	python3 -m esptool --port $(PORT) erase_flash
+	@if [ -z "$(ESPTOOL)" ]; then \
+		echo "esptool not found (checked PATH and ~/Library/Arduino15/packages/*/tools/esptool_py/*/esptool)."; \
+		echo "Install the ESP32 core with 'make install-core', or set ESPTOOL=/path/to/esptool."; \
+		exit 1; \
+	fi
+	$(ESPTOOL) --port $(PORT) erase-flash
 
 .PHONY: clean
 clean:
