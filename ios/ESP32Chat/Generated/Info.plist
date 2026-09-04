@@ -23,7 +23,12 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>ESP32 Chat uses Bluetooth to find your Heltec ESP32 device and exchange messages with it.</string>
 	<key>UILaunchScreen</key>
-	<dict/>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchLogo</string>
+	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
