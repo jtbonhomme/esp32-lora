@@ -26,6 +26,19 @@ LIBS := \
 
 BOARD_MANAGER_URL := https://resource.heltec.cn/download/package_heltec_esp32_index.json
 
+# BLE advertised name for sketches/ble. Override on the command line or via
+# environment, e.g.:
+#   make compile SKETCH=sketches/ble BLE_NAME=MyDevice
+#   BLE_NAME=MyDevice make upload SKETCH=sketches/ble
+BLE_NAME ?= Heltec-BLE
+
+# Extra compiler defines threaded into the build. Currently only used to
+# override the BLE_DEVICE_NAME macro compiled into sketches/ble.
+EXTRA_BUILD_PROPERTIES :=
+ifeq ($(SKETCH),sketches/ble)
+EXTRA_BUILD_PROPERTIES += --build-property 'compiler.cpp.extra_flags=-DBLE_DEVICE_NAME="$(BLE_NAME)"'
+endif
+
 # --- Help ---------------------------------------------------------------
 
 .PHONY: help
@@ -37,6 +50,7 @@ help:
 	@echo "  install-libs  Install libraries required by the sketches"
 	@echo "  libs          List currently installed libraries"
 	@echo "  compile       Compile SKETCH=$(SKETCH) for BOARD=$(BOARD)"
+	@echo "                (SKETCH=sketches/ble also honors BLE_NAME=$(BLE_NAME))"
 	@echo "  upload        Compile then flash to PORT=$(PORT)"
 	@echo "  monitor       Open a serial monitor at BAUD=$(BAUD)"
 	@echo "  run           upload, then monitor"
@@ -74,7 +88,7 @@ libs:
 
 .PHONY: compile
 compile:
-	arduino-cli compile --fqbn $(FQBN) --build-path $(BUILD_DIR) $(SKETCH)
+	arduino-cli compile --fqbn $(FQBN) --build-path $(BUILD_DIR) $(EXTRA_BUILD_PROPERTIES) $(SKETCH)
 
 .PHONY: upload
 upload: compile
@@ -100,7 +114,7 @@ run: upload monitor
 
 .PHONY: size
 size:
-	arduino-cli compile --fqbn $(FQBN) --build-path $(BUILD_DIR) --verbose $(SKETCH) | grep -E "Sketch uses|Global variables"
+	arduino-cli compile --fqbn $(FQBN) --build-path $(BUILD_DIR) --verbose $(EXTRA_BUILD_PROPERTIES) $(SKETCH) | grep -E "Sketch uses|Global variables"
 
 # --- Maintenance ------------------------------------------------------------
 

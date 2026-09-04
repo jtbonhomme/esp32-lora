@@ -1,2 +1,7 @@
 .claude/settings.local.json
 build
+
+# Xcode user-specific state (ios/ESP32Chat.xcodeproj itself is committed)
+ios/**/xcuserdata/
+ios/**/*.xcuserstate
+ios/**/DerivedData/

@@ -1,0 +1,29 @@
+name: ESP32Chat
+options:
+  bundleIdPrefix: com.jtbonhomme
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+targets:
+  ESP32Chat:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleDisplayName: ESP32 Chat
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSBluetoothAlwaysUsageDescription: "ESP32 Chat uses Bluetooth to find your Heltec ESP32 device and exchange messages with it."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jtbonhomme.ESP32Chat
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        CODE_SIGN_STYLE: Automatic
