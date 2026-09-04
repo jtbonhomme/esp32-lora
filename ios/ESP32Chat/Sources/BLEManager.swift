@@ -153,7 +153,29 @@ final class BLEManager: NSObject, ObservableObject {
     private func describe(_ error: Error?) -> String? {
         guard let error else { return nil }
         let nsError = error as NSError
-        return "\(nsError.localizedDescription) (domain: \(nsError.domain), code: \(nsError.code))"
+        var description = "\(nsError.localizedDescription) (domain: \(nsError.domain), code: \(nsError.code))"
+        if nsError.domain == CBErrorDomain, let code = CBError.Code(rawValue: nsError.code), let hint = hint(for: code) {
+            description += "\n\(hint)"
+        }
+        return description
+    }
+
+    private func hint(for code: CBError.Code) -> String? {
+        switch code {
+        case .peerRemovedPairingInformation:
+            // Happens after erasing the board's flash (wipes its half of an
+            // old Bluetooth pairing, e.g. from previously-flashed firmware)
+            // while this iPhone still holds its own half of that same pairing.
+            return "Fix: on this iPhone, open Settings \u{2192} Bluetooth, find this board, tap \u{2139}\u{FE0F} \u{2192} Forget This Device, then reconnect."
+        case .connectionTimeout:
+            return "The board didn't respond in time \u{2014} check it's powered on and in range."
+        case .peripheralDisconnected:
+            return "The board closed the connection."
+        case .encryptionTimedOut:
+            return "Encryption handshake timed out \u{2014} this can also indicate a stale pairing; try Settings \u{2192} Bluetooth \u{2192} Forget This Device."
+        default:
+            return nil
+        }
     }
 
     // MARK: - Connect timeout
